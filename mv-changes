@@ -77,11 +77,17 @@ else
   git commit -q --fixup=$FROM
 fi
 git add $WHAT && git commit -q --fixup=$TO
-# do-nothing editor to get rid of user actions
-GIT_SEQUENCE_EDITOR=: git rebase --autosquash -q -i $START_REV~ || `git rebase --abort && git checkout $BRANCH && exit 1`
-
+git rebase --autosquash -q -i $START_REV~
+while git status | grep "Unmerged" >/dev/null; do
+  git mergetool
+  git rebase --continue
+done
 # and we need the second rebase to replay the rest of the branch on top of the edited history
 # $ONTO pointer depends on whether we have fixed $FROM or not
 [[ "$DIRECTION" == "down" ]] && ONTO=HEAD~ || ONTO=HEAD
 # replay subsequent commits from original branch
-git rebase -q --onto $ONTO $END_REV $BRANCH || exit 1
+git rebase -q --onto $ONTO $END_REV $BRANCH
+while git status | grep "Unmerged" >/dev/null; do
+  git mergetool
+  git rebase --continue
+done
